@@ -2,8 +2,6 @@ tools for D🙲D automation in Miro
 
 local testing: https://developers.miro.com/docs/how-to-start
 
-```
-TODO code to start local testing
-```
+point miro at `https://pfg.pw/mirodnd/app-dev.html`
 
-.
+run `http-server dist -c-1 -p 8020 --cors dist/`
