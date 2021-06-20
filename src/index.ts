@@ -1,7 +1,6 @@
 const query = new URLSearchParams(location.search);
-const is_dev = location.pathname.endsWith("-dev.html");
 
-const meta_id = is_dev ? "3074457360393936567" : "3074457360394471343";
+const meta_id = miro.getClientId();
 
 function libPath(id: LibID) {
     if(location.pathname.endsWith("-dev.html")) {
@@ -77,6 +76,7 @@ if(page === "side_panel") {
     // +'6c.077-1.106.124-1.82.171-2.675 2.398-.483 3.595.257 3.521 1.332-.08 1.174-1.506 1.965-3.692 1.343z"/>';
 
     const circle_icon = '<circle cx="12" cy="12" r="9" fill="none" fill-rule="evenodd" stroke="currentColor" stroke-width="2"/>';
+
 
     miro.onReady(() => {
         miro.initialize({
