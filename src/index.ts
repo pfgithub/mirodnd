@@ -2,9 +2,7 @@ import "./_stdlib";
 
 const query = new URLSearchParams(location.search);
 
-let meta_id: string = "ENOID";
-
-
+let meta_id = "ENOID";
 
 function libPath(id: LibID) {
     if(location.pathname.endsWith("-dev.html")) {
@@ -318,7 +316,7 @@ function doStart() {
     }
 }
 
-if(!miro.onReady) {
+if(!(miro.onReady as unknown as boolean)) {
     doStart();
 }else miro.onReady(() => {
     meta_id = miro.getClientId();
