@@ -1,6 +1,8 @@
+import "./_stdlib";
+
 const query = new URLSearchParams(location.search);
 
-const meta_id = miro.getClientId();
+const meta_id = miro.getClientId as unknown as boolean ? miro.getClientId() : "ENOID";
 
 function libPath(id: LibID) {
     if(location.pathname.endsWith("-dev.html")) {
@@ -8,6 +10,9 @@ function libPath(id: LibID) {
     }else{
         return "/mirodnd/app.html?page="+encodeURIComponent(id);
     }
+}
+function fullLibPath(id: LibID) {
+    return "https://pfg.pw"+libPath(id);
 }
 
 type Metadata = {
@@ -17,6 +22,9 @@ type Metadata = {
 } | {
     kind: "frame_link",
     frame_id: string,
+} | {
+    kind: "back_link",
+    viewport: SDK.IRect,
 } | {
     kind: "unknown",
 };
@@ -28,11 +36,9 @@ type LibID = "side_panel" | "unsupported";
 if(page === "side_panel") {
     document.body.appendChild(document.createTextNode("Hi!"));
 
-    const btn = document.createElement("button");
-    document.body.appendChild(btn);
-    btn.appendChild(document.createTextNode("Create D20"));
+    const d20btn = el("button").adto(document.body).atxt("Create D20");
 
-    btn.onclick = async () => {
+    d20btn.onev("click", async () => {
         const meta: Metadata = {
             kind: "random",
             min: 1,
@@ -42,17 +48,15 @@ if(page === "side_panel") {
             [meta_id]: meta,
         }});
         // woah widget.clientVisible
-    };
+    });
 
-    const fwbtn = document.createElement("button");
-    document.body.appendChild(fwbtn);
-    fwbtn.appendChild(document.createTextNode("Create link to frame"));
+    const fwbtn = el("button").adto(document.body).atxt("Create link to frame");
 
     fwbtn.onclick = async () => {
         const selected_items = await miro.board.selection.get();
-        if(selected_items.length !== 1) return alert("select frame then click");
+        if(selected_items.length !== 1) return void miro.showErrorNotification("select frame then click");
         const selected = selected_items[0]!;
-        if(selected.type !== "FRAME") return alert("need frame");
+        if(selected.type !== "FRAME") return void miro.showErrorNotification("need frame");
         
         const meta: Metadata = {
             kind: "frame_link",
@@ -62,6 +66,21 @@ if(page === "side_panel") {
             [meta_id]: meta,
         }});
     };
+
+    el("button").adto(document.body).atxt("Create thing").onev("click", async () => {
+        //
+        await miro.board.widgets.create({type: "embed", html: "<iframe src=\""+fullLibPath("unsupported")+"\"></iframe>"});
+    });
+
+    {
+        const clickmodeframe = el("div").adto(document.body);
+        el("button").adto(clickmodeframe).atxt("Press Button").onev("click", () => {
+            localStorage.setItem("cfg-clickmode", "click");
+        });
+        el("button").adto(clickmodeframe).atxt("Instant").onev("click", () => {
+            localStorage.setItem("cfg-clickmode", "instant");
+        });
+    }
 }else if(page == null){
     document.body.appendChild(document.createTextNode("You should not be seeing this."));
 
@@ -77,51 +96,101 @@ if(page === "side_panel") {
 
     const circle_icon = '<circle cx="12" cy="12" r="9" fill="none" fill-rule="evenodd" stroke="currentColor" stroke-width="2"/>';
 
-
     miro.onReady(() => {
         miro.initialize({
             extensionPoints: {
                 bottomBar: {
-                    title: 'Some title',
+                    title: 'R🙲O',
                     svgIcon: circle_icon,
                     onClick: async () => {
                         const is_authorized = await miro.isAuthorized();
                         if(!is_authorized) {
                             await miro.requestAuthorization();
                         }
+
+                        if((localStorage.getItem("cfg-clickmode") ?? "click") === "click") {
+                            const selection = await miro.board.selection.get();
+                            if(!await activateSelectedItem(selection)) return;
+                        }
+
                         await miro.board.ui.openLeftSidebar(libPath("side_panel"));
                     }
                 }
             },
         }).catch(e => console.log("plugin init error", e));
 
-        //eslint-disable-next-line @typescript-eslint/no-misused-promises
+        async function activateSelectedItem(selection: SDK.IWidget[]): Promise<undefined | {activated: false}> {
+            if(selection.length !== 1) return {activated: false};
+            const selxitm = selection[0]!;
+            const meta = selxitm.metadata[meta_id] as Metadata | undefined;
+            if(!meta) return {activated: false};
+
+            if(meta.kind === "random") {
+                const [widget] = await miro.board.widgets.get({id: selxitm.id, type: "STICKER"}) as [SDK.ITextWidget | undefined];
+                if(!widget) return void miro.showErrorNotification("dice error. try making new dice.");
+
+                widget.text = "Num: "+(((Math.random() * (meta.max - meta.min)) |0) + meta.min);
+
+                await miro.board.widgets.update(widget);
+
+                return;
+            }else if(meta.kind === "frame_link") {
+                const [frame] = await miro.board.widgets.get({id: meta.frame_id, type: "FRAME"}) as [SDK.IFrameWidget | undefined];
+                if(!frame) return void miro.showErrorNotification("link error. maybe the link was deleted? try making a new link");
+                
+                const prev_viewport = await miro.board.viewport.get();
+                await miro.board.viewport.set({x: frame.x - (frame.width / 2), y: frame.y - (frame.height / 2), width: frame.width, height: frame.height});
+                
+                const backmeta: Metadata = {
+                    kind: "back_link",
+                    viewport: {
+                        x: prev_viewport.x,
+                        y: prev_viewport.y,
+                        width: prev_viewport.width,
+                        height: prev_viewport.height,
+                    },
+                };
+                const backbtnsize = Math.min(frame.width / 10, frame.height / 10);
+                const backbtnw = backbtnsize;
+                const backbtnh = backbtnsize / 3;
+                await miro.board.widgets.create({
+                    type: 'shape',
+                    text: '< Back',
+                    x: frame.x - (frame.width / 2) + (backbtnw / 2),
+                    y: frame.y - (frame.height / 2) + (backbtnh / 2),
+                    width: backbtnw,
+                    height: backbtnh,
+                    metadata: {
+                        [meta_id]: backmeta,
+                    },
+                });
+
+                return;
+            }else if(meta.kind === "back_link") {
+                await miro.board.viewport.set(meta.viewport);
+                await miro.board.widgets.deleteById(selxitm.id);
+
+                return;
+            }
+
+            void miro.showErrorNotification("error, unsupported kind "+meta.kind);
+            return;
+        }
+
         miro.addListener("SELECTION_UPDATED", async (event) => {
-            //
             const data = event.data as {id: string, metadata: {[key: string]: unknown}, type: string}[];
             if(data.length !== 1) return;
             const selxitm = data[0]!;
             const meta = selxitm.metadata[meta_id] as Metadata | undefined;
             if(!meta) return;
 
-            if(meta.kind === "random") {
-                const [widget] = await miro.board.widgets.get({id: selxitm.id, type: "STICKER"}) as [SDK.ITextWidget | undefined];
-                if(!widget) return;
-
-                widget.text = "Num: "+(((Math.random() * (meta.max - meta.min)) |0) + meta.min);
-
-                await miro.board.widgets.update(widget);
-
-                // const viewport = await miro.board.viewport.get();
-                // console.log(viewport);
-                // await miro.board.viewport.set({ x: -1858.2041958933646, y: -536.0726428187653, width: 5161.471103327495, height: 1356.217162872154 });
-            }else if(meta.kind === "frame_link") {
-                const [widget] = await miro.board.widgets.get({id: meta.frame_id, type: "FRAME"}) as [SDK.IFrameWidget | undefined];
-                if(!widget) return;
-                
-                console.log(await miro.board.viewport.get(), await miro.board.viewport.getScale(), widget);
-                await miro.board.viewport.set({x: widget.x - (widget.width / 2), y: widget.y - (widget.height / 2), width: widget.width, height: widget.height});
+            if(localStorage.getItem("cfg-clickmode") !== "instant") {
+                void miro.showNotification("Click the circle button to activate.");
+                return;
             }
+
+            const selection = await miro.board.widgets.get({id: selxitm.id});
+            await activateSelectedItem(selection);
         });
     });
 }else{

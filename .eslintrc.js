@@ -44,6 +44,7 @@ module.exports = {
             "@typescript-eslint/restrict-plus-operands": 0, // "" + number is used frequently
             "@typescript-eslint/require-await": 0, // ?? do you want me to function() {return new Promise(r => r())}??
             "@typescript-eslint/prefer-regexp-exec": 0, // imo more confusing
+            "@typescript-eslint/no-misused-promises": 0, // every single funcution call goes through a promise and most of them (probably) can't fail
 
             // stricter linting rules:
             "@typescript-eslint/no-floating-promises": "warn",
