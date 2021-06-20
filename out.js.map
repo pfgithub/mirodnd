@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.js"],
+  "sourcesContent": ["miro.onReady(() => {\n    miro.initialize({\n        extensionPoints: {\n            bottomBar: {\n                title: 'Some title',\n                svgIcon: '<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"none\" fill-rule=\"evenodd\" stroke=\"currentColor\" stroke-width=\"2\"/>',\n                onClick: () => {\n                    alert('Hi!')\n                }\n            }\n        }\n    })\n})"],
+  "mappings": ";;AAAA,OAAK,QAAQ,MAAM;AACf,SAAK,WAAW;AAAA,MACZ,iBAAiB;AAAA,QACb,WAAW;AAAA,UACP,OAAO;AAAA,UACP,SAAS;AAAA,UACT,SAAS,MAAM;AACX,kBAAM;AAAA;AAAA;AAAA;AAAA;AAAA;",
+  "names": []
+}
