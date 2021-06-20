@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "build": "node esbuild.js"
+    "build": "node esbuild.js && cp src/app.html dist/app.html"
   },
   "devDependencies": {
     "esbuild": "^0.12.9"
