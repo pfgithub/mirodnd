@@ -58,20 +58,92 @@
     return "https://pfg.pw" + libPath(id);
   }
   var page = query.get("page");
+  async function createCentered() {
+    const frame = await miro.board.viewport.get();
+    const size = Math.min(frame.width / 10, frame.height / 10);
+    return {
+      x: frame.x + frame.width / 2,
+      y: frame.y + frame.height / 2,
+      width: size,
+      height: size
+    };
+  }
+  function randomizeDice(meta) {
+    const randv = (Math.random() * (meta.max + 1 - meta.min) | 0) + meta.min;
+    if (meta.min === 1 && meta.max === 6) {
+      return [..."\u2680\u2681\u2682\u2683\u2684\u2685"][randv - 1];
+    } else if (meta.min === 1) {
+      return "d" + meta.max + ": " + randv;
+    }
+    return "Num: " + randv;
+  }
+  async function activateSelectedItem(selection) {
+    if (selection.length !== 1)
+      return { activated: false };
+    const selxitm = selection[0];
+    const meta = selxitm.metadata[meta_id];
+    if (!meta)
+      return { activated: false };
+    if (meta.kind === "random") {
+      const [widget] = await miro.board.widgets.get({ id: selxitm.id, type: "STICKER" });
+      if (!widget)
+        return void miro.showErrorNotification("dice error. try making new dice.");
+      widget.text = randomizeDice(meta);
+      await miro.board.widgets.update(widget);
+      return;
+    } else if (meta.kind === "frame_link") {
+      const [frame] = await miro.board.widgets.get({ id: meta.frame_id, type: "FRAME" });
+      if (!frame)
+        return void miro.showErrorNotification("link error. maybe the link was deleted? try making a new link");
+      const prev_viewport = await miro.board.viewport.get();
+      await miro.board.viewport.set({ x: frame.x - frame.width / 2, y: frame.y - frame.height / 2, width: frame.width, height: frame.height });
+      const backmeta = {
+        kind: "back_link",
+        viewport: {
+          x: prev_viewport.x,
+          y: prev_viewport.y,
+          width: prev_viewport.width,
+          height: prev_viewport.height
+        }
+      };
+      const backbtnsize = Math.min(frame.width / 10, frame.height / 10);
+      const backbtnw = backbtnsize;
+      const backbtnh = backbtnsize / 3;
+      await miro.board.widgets.create({
+        type: "shape",
+        text: "< Back",
+        x: frame.x - frame.width / 2 + backbtnw / 2,
+        y: frame.y - frame.height / 2 + backbtnh / 2,
+        width: backbtnw,
+        height: backbtnh,
+        metadata: {
+          [meta_id]: backmeta
+        }
+      });
+      return;
+    } else if (meta.kind === "back_link") {
+      await miro.board.viewport.set(meta.viewport);
+      await miro.board.widgets.deleteById(selxitm.id);
+      return;
+    }
+    void miro.showErrorNotification("error, unsupported kind " + meta.kind);
+    return;
+  }
   if (page === "side_panel") {
-    document.body.appendChild(document.createTextNode("Hi!"));
-    const d20btn = el("button").adto(document.body).atxt("Create D20");
+    const root = el("div").adto(document.body);
+    root.appendChild(document.createTextNode("Hi!"));
+    const d20btn = el("button").adto(root).atxt("Create D20");
     d20btn.onev("click", async () => {
       const meta = {
         kind: "random",
         min: 1,
         max: 20
       };
-      await miro.board.widgets.create({ type: "sticker", text: "Click to Roll", metadata: {
+      await miro.board.widgets.create({ type: "sticker", text: "Click to Roll", ...await createCentered(), metadata: {
         [meta_id]: meta
       } });
     });
-    const fwbtn = el("button").adto(document.body).atxt("Create link to frame");
+    const fwbtn = el("button").adto(root).atxt("Create link to frame");
     fwbtn.onclick = async () => {
       const selected_items = await miro.board.selection.get();
       if (selected_items.length !== 1)
@@ -83,15 +155,15 @@
         kind: "frame_link",
         frame_id: selected.id
       };
-      await miro.board.widgets.create({ type: "sticker", text: "Jump", metadata: {
+      await miro.board.widgets.create({ type: "sticker", text: "Jump", ...await createCentered(), metadata: {
         [meta_id]: meta
       } });
     };
-    el("button").adto(document.body).atxt("Create thing").onev("click", async () => {
-      await miro.board.widgets.create({ type: "embed", html: '<iframe src="' + fullLibPath("unsupported") + '"></iframe>' });
+    el("button").adto(root).atxt("Create thing").onev("click", async () => {
+      await miro.board.widgets.create({ type: "embed", ...await createCentered(), html: '<iframe src="' + fullLibPath("unsupported") + '"></iframe>' });
     });
     {
-      const clickmodeframe = el("div").adto(document.body);
+      const clickmodeframe = el("div").adto(root);
       el("button").adto(clickmodeframe).atxt("Press Button").onev("click", () => {
         localStorage.setItem("cfg-clickmode", "click");
       });
@@ -99,6 +171,61 @@
         localStorage.setItem("cfg-clickmode", "instant");
       });
     }
+    let selection_editor = null;
+    const clearSelxnEditor = () => {
+      root.style.display = "";
+      if (selection_editor)
+        selection_editor.remove();
+    };
+    const createSelxnEditor = (widget, meta) => {
+      clearSelxnEditor();
+      root.style.display = "none";
+      const editor = el("div").adto(document.body);
+      selection_editor = editor;
+      el("button").adto(el("div").adto(editor)).atxt("\u25CB Activate").onev("click", async () => {
+        await activateSelectedItem([widget]);
+      });
+      if (meta.kind === "random") {
+        editor.adch(el("h1").atxt("Dice"));
+        const minv = el("input").adto(el("label").atxt("Min: ").adto(el("div").adto(editor)));
+        const maxv = el("input").adto(el("label").atxt("Max: ").adto(el("div").adto(editor)));
+        minv.value = "" + meta.min;
+        maxv.value = "" + meta.max;
+        const savebtn = el("button").adto(el("div").adto(editor)).atxt("Save");
+        savebtn.disabled = true;
+        savebtn.onev("click", async () => {
+          meta.min = +minv.value;
+          meta.max = +maxv.value;
+          widget.text = randomizeDice(meta);
+          didchange();
+          await miro.board.widgets.update(widget);
+        });
+        const didchange = () => {
+          const is_unedited = minv.value === "" + meta.min && maxv.value === "" + meta.max;
+          savebtn.disabled = is_unedited;
+        };
+        anychange([minv, maxv], didchange);
+      } else {
+        editor.atxt("TODO edit " + meta.kind);
+      }
+    };
+    miro.addListener("SELECTION_UPDATED", async (event) => {
+      const data = event.data;
+      if (data.length !== 1)
+        return clearSelxnEditor();
+      const selxitm = data[0];
+      const meta = selxitm.metadata[meta_id];
+      if (!meta)
+        return clearSelxnEditor();
+      const selection = await miro.board.widgets.get({ id: selxitm.id });
+      if (selection.length !== 1)
+        return clearSelxnEditor();
+      const wselxitm = selection[0];
+      const wmeta = wselxitm.metadata[meta_id];
+      if (!wmeta)
+        return clearSelxnEditor();
+      createSelxnEditor(wselxitm, wmeta);
+    });
   } else if (page == null) {
     document.body.appendChild(document.createTextNode("You should not be seeing this."));
     const circle_icon = '<circle cx="12" cy="12" r="9" fill="none" fill-rule="evenodd" stroke="currentColor" stroke-width="2"/>';
@@ -124,58 +251,6 @@
           }
         }
       }).catch((e) => console.log("plugin init error", e));
-      async function activateSelectedItem(selection) {
-        if (selection.length !== 1)
-          return { activated: false };
-        const selxitm = selection[0];
-        const meta = selxitm.metadata[meta_id];
-        if (!meta)
-          return { activated: false };
-        if (meta.kind === "random") {
-          const [widget] = await miro.board.widgets.get({ id: selxitm.id, type: "STICKER" });
-          if (!widget)
-            return void miro.showErrorNotification("dice error. try making new dice.");
-          widget.text = "Num: " + ((Math.random() * (meta.max - meta.min) | 0) + meta.min);
-          await miro.board.widgets.update(widget);
-          return;
-        } else if (meta.kind === "frame_link") {
-          const [frame] = await miro.board.widgets.get({ id: meta.frame_id, type: "FRAME" });
-          if (!frame)
-            return void miro.showErrorNotification("link error. maybe the link was deleted? try making a new link");
-          const prev_viewport = await miro.board.viewport.get();
-          await miro.board.viewport.set({ x: frame.x - frame.width / 2, y: frame.y - frame.height / 2, width: frame.width, height: frame.height });
-          const backmeta = {
-            kind: "back_link",
-            viewport: {
-              x: prev_viewport.x,
-              y: prev_viewport.y,
-              width: prev_viewport.width,
-              height: prev_viewport.height
-            }
-          };
-          const backbtnsize = Math.min(frame.width / 10, frame.height / 10);
-          const backbtnw = backbtnsize;
-          const backbtnh = backbtnsize / 3;
-          await miro.board.widgets.create({
-            type: "shape",
-            text: "< Back",
-            x: frame.x - frame.width / 2 + backbtnw / 2,
-            y: frame.y - frame.height / 2 + backbtnh / 2,
-            width: backbtnw,
-            height: backbtnh,
-            metadata: {
-              [meta_id]: backmeta
-            }
-          });
-          return;
-        } else if (meta.kind === "back_link") {
-          await miro.board.viewport.set(meta.viewport);
-          await miro.board.widgets.deleteById(selxitm.id);
-          return;
-        }
-        void miro.showErrorNotification("error, unsupported kind " + meta.kind);
-        return;
-      }
       miro.addListener("SELECTION_UPDATED", async (event) => {
         const data = event.data;
         if (data.length !== 1)
