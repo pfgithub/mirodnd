@@ -1,0 +1,12 @@
+{
+  "name": "mirodnd",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "node esbuild.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.12.9"
+  }
+}
