@@ -4,7 +4,6 @@
   window.txt = (txt2) => document.createTextNode(txt2);
   window.anychange = (itms, cb) => {
     itms.forEach((itm) => itm.oninput = () => cb());
-    cb();
     return cb;
   };
   window.body = document.getElementById("maincontent") || document.body;
@@ -78,6 +77,7 @@
     return "Num: " + randv;
   }
   async function activateSelectedItem(selection) {
+    var _a;
     if (selection.length !== 1)
       return { activated: false };
     const selxitm = selection[0];
@@ -97,29 +97,31 @@
         return void miro.showErrorNotification("link error. maybe the link was deleted? try making a new link");
       const prev_viewport = await miro.board.viewport.get();
       await miro.board.viewport.set({ x: frame.x - frame.width / 2, y: frame.y - frame.height / 2, width: frame.width, height: frame.height });
-      const backmeta = {
-        kind: "back_link",
-        viewport: {
-          x: prev_viewport.x,
-          y: prev_viewport.y,
-          width: prev_viewport.width,
-          height: prev_viewport.height
-        }
-      };
-      const backbtnsize = Math.min(frame.width / 10, frame.height / 10);
-      const backbtnw = backbtnsize;
-      const backbtnh = backbtnsize / 3;
-      await miro.board.widgets.create({
-        type: "shape",
-        text: "< Back",
-        x: frame.x - frame.width / 2 + backbtnw / 2,
-        y: frame.y - frame.height / 2 + backbtnh / 2,
-        width: backbtnw,
-        height: backbtnh,
-        metadata: {
-          [meta_id]: backmeta
-        }
-      });
+      if ((_a = meta.create_back_button) != null ? _a : true) {
+        const backmeta = {
+          kind: "back_link",
+          viewport: {
+            x: prev_viewport.x,
+            y: prev_viewport.y,
+            width: prev_viewport.width,
+            height: prev_viewport.height
+          }
+        };
+        const backbtnsize = Math.min(frame.width / 10, frame.height / 10);
+        const backbtnw = backbtnsize;
+        const backbtnh = backbtnsize / 3;
+        await miro.board.widgets.create({
+          type: "shape",
+          text: "< Back",
+          x: frame.x - frame.width / 2 + backbtnw / 2,
+          y: frame.y - frame.height / 2 + backbtnh / 2,
+          width: backbtnw,
+          height: backbtnh,
+          metadata: {
+            [meta_id]: backmeta
+          }
+        });
+      }
       return;
     } else if (meta.kind === "back_link") {
       await miro.board.viewport.set(meta.viewport);
@@ -178,6 +180,7 @@
         selection_editor.remove();
     };
     const createSelxnEditor = (widget, meta) => {
+      var _a;
       clearSelxnEditor();
       root.style.display = "none";
       const editor = el("div").adto(document.body);
@@ -192,7 +195,6 @@
         minv.value = "" + meta.min;
         maxv.value = "" + meta.max;
         const savebtn = el("button").adto(el("div").adto(editor)).atxt("Save");
-        savebtn.disabled = true;
         savebtn.onev("click", async () => {
           meta.min = +minv.value;
           meta.max = +maxv.value;
@@ -205,6 +207,27 @@
           savebtn.disabled = is_unedited;
         };
         anychange([minv, maxv], didchange);
+        didchange();
+      } else if (meta.kind === "frame_link") {
+        editor.adch(el("h1").atxt("Frame Link"));
+        el("button").atxt("TODO pick").adto(el("div").atxt("Link to: ").adto(editor));
+        const makesbackbtnlbl = el("label").adto(editor);
+        const checkbox = el("input").attr({ type: "checkbox" }).adto(makesbackbtnlbl);
+        makesbackbtnlbl.atxt(" Make back button");
+        checkbox.checked = (_a = meta.create_back_button) != null ? _a : true;
+        const savebtn = el("button").adto(el("div").adto(editor)).atxt("Save");
+        savebtn.onev("click", async () => {
+          meta.create_back_button = checkbox.checked;
+          didchange();
+          await miro.board.widgets.update(widget);
+        });
+        const didchange = () => {
+          var _a2;
+          const makesbackbtn_unchanged = checkbox.checked === ((_a2 = meta.create_back_button) != null ? _a2 : true);
+          savebtn.disabled = makesbackbtn_unchanged;
+        };
+        anychange([checkbox], didchange);
+        didchange();
       } else {
         editor.atxt("TODO edit " + meta.kind);
       }
