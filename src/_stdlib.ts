@@ -40,7 +40,7 @@ declare global {
 //eslint-disable-next-line @typescript-eslint/no-unsafe-return
 window.el = (...a) => document.createElement(...a);
 window.txt = (txt: string) => document.createTextNode(txt);
-window.anychange = (itms, cb) => {itms.forEach(itm => itm.oninput = () => cb()); cb(); return cb};
+window.anychange = (itms, cb) => {itms.forEach(itm => itm.oninput = () => cb()); return cb};
 window.body = document.getElementById("maincontent") || document.body;
 Node.prototype.attr = function(atrs) {Object.entries(atrs).forEach(([k, v]) => v == null ? this.removeAttribute(k) : this.setAttribute(k, v)); return this};
 Node.prototype.adto = function(prnt) {prnt.appendChild(this); return this};
