@@ -2,7 +2,9 @@ import "./_stdlib";
 
 const query = new URLSearchParams(location.search);
 
-const meta_id = miro.getClientId as unknown as boolean ? miro.getClientId() : "ENOID";
+let meta_id: string = "ENOID";
+
+
 
 function libPath(id: LibID) {
     if(location.pathname.endsWith("-dev.html")) {
@@ -116,7 +118,7 @@ async function activateSelectedItem(selection: SDK.IWidget[]): Promise<undefined
     return;
 }
 
-if(page === "side_panel") {
+function runSidePanel() {
     const root = el("div").adto(document.body);
 
     root.appendChild(document.createTextNode("Hi!"));
@@ -249,7 +251,8 @@ if(page === "side_panel") {
         if(!wmeta) return clearSelxnEditor();
         createSelxnEditor(wselxitm, wmeta);
     });
-}else if(page == null){
+}
+function runMainScreen() {
     document.body.appendChild(document.createTextNode("You should not be seeing this."));
 
     // const icon24 = '<path fill="currentColor" fill-rule="nonzero" d="M20.156 7.762c-1.351-3.746-4.672-5.297-8.838-4.61-'
@@ -303,6 +306,22 @@ if(page === "side_panel") {
             await activateSelectedItem(selection);
         });
     });
-}else{
-    document.body.appendChild(document.createTextNode("404 not found page: "+page));
 }
+
+function doStart() {
+    if(page === "side_panel") {
+        runSidePanel();
+    }else if(page == null){
+        runMainScreen();
+    }else{
+        document.body.appendChild(document.createTextNode("404 not found page: "+page));
+    }
+}
+
+if(!miro.onReady) {
+    doStart();
+}else miro.onReady(() => {
+    meta_id = miro.getClientId();
+
+    doStart();
+});
