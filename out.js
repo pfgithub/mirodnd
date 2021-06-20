@@ -1,8 +1,7 @@
 (() => {
   // src/index.ts
   var query = new URLSearchParams(location.search);
-  var is_dev = location.pathname.endsWith("-dev.html");
-  var meta_id = is_dev ? "3074457360393936567" : "3074457360394471343";
+  var meta_id = miro.getClientId();
   function libPath(id) {
     if (location.pathname.endsWith("-dev.html")) {
       return "/mirodnd/app-dev.html?page=" + encodeURIComponent(id);
