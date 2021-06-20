@@ -13,7 +13,7 @@ jobs:
       - name: Install and Build 🔧
         run: |
           yarn install
-          env node_env=PRODUCTION yarn build
+          env NODE_ENV=production yarn build
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@4.0.0
         with:
