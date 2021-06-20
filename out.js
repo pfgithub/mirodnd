@@ -45,7 +45,7 @@
 
   // src/index.ts
   var query = new URLSearchParams(location.search);
-  var meta_id = miro.getClientId ? miro.getClientId() : "ENOID";
+  var meta_id = "ENOID";
   function libPath(id) {
     if (location.pathname.endsWith("-dev.html")) {
       return "/mirodnd/app-dev.html?page=" + encodeURIComponent(id);
@@ -131,7 +131,7 @@
     void miro.showErrorNotification("error, unsupported kind " + meta.kind);
     return;
   }
-  if (page === "side_panel") {
+  function runSidePanel() {
     const root = el("div").adto(document.body);
     root.appendChild(document.createTextNode("Hi!"));
     const d20btn = el("button").adto(root).atxt("Create D20");
@@ -249,7 +249,8 @@
         return clearSelxnEditor();
       createSelxnEditor(wselxitm, wmeta);
     });
-  } else if (page == null) {
+  }
+  function runMainScreen() {
     document.body.appendChild(document.createTextNode("You should not be seeing this."));
     const circle_icon = '<circle cx="12" cy="12" r="9" fill="none" fill-rule="evenodd" stroke="currentColor" stroke-width="2"/>';
     miro.onReady(() => {
@@ -290,7 +291,21 @@
         await activateSelectedItem(selection);
       });
     });
-  } else {
-    document.body.appendChild(document.createTextNode("404 not found page: " + page));
   }
+  function doStart() {
+    if (page === "side_panel") {
+      runSidePanel();
+    } else if (page == null) {
+      runMainScreen();
+    } else {
+      document.body.appendChild(document.createTextNode("404 not found page: " + page));
+    }
+  }
+  if (!miro.onReady) {
+    doStart();
+  } else
+    miro.onReady(() => {
+      meta_id = miro.getClientId();
+      doStart();
+    });
 })();
