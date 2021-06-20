@@ -3,11 +3,13 @@ tools for D🙲D automation in Miro
 # features
 
 - instant jump. miro has links but they play a slow animation. this adds an instant jump button.
-- dice. roll a d20.
+- dice. roll dice.
 
 # todo
 
-- rather than activating onselection, maybe activate when you click the buton in the bottom bar idk
+- a token library that you can add and remove tokens from. like the token is a miro object and then you can drag the tokens onto the board.
+- fight helpers like calculations and stuff
+- character sheets?
 
 # building
 
