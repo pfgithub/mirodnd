@@ -5,6 +5,7 @@ import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import copy from 'rollup-plugin-copy';
 import {terser} from 'rollup-plugin-terser';
+import css from "rollup-plugin-import-css";
 
 const extensions = [
     '.js', '.jsx', '.ts', '.tsx',
@@ -37,5 +38,6 @@ export default defineConfig({
             ]
         }),
         is_prod && terser(),
+        css(),
     ],
 });

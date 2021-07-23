@@ -20,6 +20,7 @@
     "eslint": "^7.29.0",
     "rollup": "^2.53.3",
     "rollup-plugin-copy": "^3.4.0",
+    "rollup-plugin-import-css": "^3.0.0",
     "rollup-plugin-terser": "^7.0.2",
     "rollup-plugin-windicss": "^1.2.5",
     "typescript": "^4.3.4"

@@ -1,6 +1,16 @@
 import { ShowBool, ShowCond, SwitchKind } from "./utils";
 import { createContext, createMemo, createSignal, JSX, untrack, useContext } from "solid-js";
 import {render} from "solid-js/web";
+import "virtual:windi.css";
+import "./disabled.css";
+
+if(location.pathname.endsWith("-dev.html")) {
+    fetch("http://localhost:8020/bundle.css").then(r => r.text()).then(css => {
+        const style = document.createElement("style");
+        style.textContent = css;
+        document.head.appendChild(style);
+    });
+}
 
 const query = new URLSearchParams(location.search);
 
@@ -120,18 +130,22 @@ async function activateSelectedItem(selection: SDK.IWidget[]): Promise<undefined
 
 function NoSelection(): JSX.Element {
     return <div>
-        <button onClick={async () => {
+        <button class="btn" onClick={async () => {
             const meta: Metadata = {
                 kind: "random",
                 min: 1,
                 max: 20,
             };
-            await miro.board.widgets.create({type: 'sticker', text: 'Click to Roll', ...await createCentered(), metadata: {
-                [meta_id]: meta,
-            }});
+            await miro.board.widgets.create({
+                type: 'sticker',
+                text: 'Click to Roll',
+                ...await createCentered(), metadata: {
+                    [meta_id]: meta,
+                },
+            });
         // woah widget.clientVisible
         }}>Create D20</button>
-        <button onClick={async () => {
+        <button class="btn" onClick={async () => {
             const selected_items = await miro.board.selection.get();
             if(selected_items.length !== 1) return void miro.showErrorNotification("select frame then click");
             const selected = selected_items[0]!;
@@ -145,7 +159,7 @@ function NoSelection(): JSX.Element {
                 [meta_id]: meta,
             }});
         }}>Create link to frame</button>
-        <button onClick={async () => {
+        <button class="btn" onClick={async () => {
             await miro.board.widgets.create({
                 type: "embed",
                 ...await createCentered(),
@@ -154,10 +168,10 @@ function NoSelection(): JSX.Element {
         }}>Create thing</button>
         <div>
             Click Mode:
-            <button onClick={() => {
+            <button class="btn" onClick={() => {
                 localStorage.setItem("cfg-clickmode", "click");
             }}>Click</button>
-            <button onClick={() => {
+            <button class="btn" onClick={() => {
                 localStorage.setItem("cfg-clickmode", "instant");
             }}>Instant</button>
         </div>
@@ -166,7 +180,7 @@ function NoSelection(): JSX.Element {
 
 function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
     return <div>
-        <button onclick={async () => {
+        <button class="btn" onclick={async () => {
             await activateSelectedItem([props.selection.widget]);
         }}>○ Activate</button>
         <SwitchKind item={props.selection.meta}>{{
@@ -174,18 +188,20 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
                 const [state, setState] = createSignal<DiceMeta>({...meta});
 
                 return <div>
-                    <h1>Dice</h1>
+                    <h1 class="heading">Dice</h1>
                     <div><label>Min: <input
+                        class="input"
                         onInput={e => setState(d => ({...d, min: +e.currentTarget.value}))}
                         type="number"
                         ref={el => el.value = "" + state().min}
                     /></label></div>
                     <div><label>Max: <input
+                        class="input"
                         onInput={e => setState(d => ({...d, max: +e.currentTarget.value}))}
                         type="number"
                         ref={el => el.value = "" + state().max}
                     /></label></div>
-                    <button
+                    <button class="btn"
                         disabled={JSON.stringify(state()) === JSON.stringify(meta)}
                         onClick={async () => {
                             Object.assign(meta, state());
@@ -200,14 +216,14 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
                 const [state, setState] = createSignal({...meta});
 
                 return <div>
-                    <h1>Frame Link</h1>
+                    <h1 class="heading">Frame Link</h1>
                     <div>Link to: [TODO]</div>
                     <div><label><input
                         onInput={e => setState(d => ({...d, create_back_button: !(d.create_back_button ?? true)}))}
                         type="checkbox"
                         checked={state().create_back_button ?? true}
                     /> Make back button</label></div>
-                    <button
+                    <button class="btn"
                         disabled={JSON.stringify(state()) === JSON.stringify(meta)}
                         onClick={async () => {
                             Object.assign(meta, state());
@@ -227,7 +243,7 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
 
 type SelectionState = {widget: SDK.IWidget, meta: Metadata};
 function SidePanel(props: {selection: SelectionState | null}): JSX.Element {
-    // <button onClick={() => location.reload()}>Refresh Panel</button>
+    // <button class="btn" onClick={() => location.reload()}>Refresh Panel</button>
     return <div>
         <ShowCond when={props.selection} fallback={<NoSelection />}>{selxn => (
             <SelectionEditor selection={selxn} />

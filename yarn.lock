@@ -884,6 +884,13 @@
     estree-walker "^1.0.1"
     picomatch "^2.2.2"
 
+"@rollup/pluginutils@^4.1.0":
+  version "4.1.1"
+  resolved "https://registry.yarnpkg.com/@rollup/pluginutils/-/pluginutils-4.1.1.tgz#1d4da86dd4eded15656a57d933fda2b9a08d47ec"
+  dependencies:
+    estree-walker "^2.0.1"
+    picomatch "^2.2.2"
+
 "@types/babel__core@^7.1.15":
   version "7.1.15"
   resolved "https://registry.yarnpkg.com/@types/babel__core/-/babel__core-7.1.15.tgz#2ccfb1ad55a02c83f8e0ad327cbc332f55eb1024"
@@ -1972,6 +1979,12 @@ rollup-plugin-copy@^3.4.0:
     fs-extra "^8.1.0"
     globby "10.0.1"
     is-plain-object "^3.0.0"
+
+rollup-plugin-import-css@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/rollup-plugin-import-css/-/rollup-plugin-import-css-3.0.0.tgz#8ba512c3fac187b9faf5c67e9ab3cab6b667de04"
+  dependencies:
+    "@rollup/pluginutils" "^4.1.0"
 
 rollup-plugin-terser@^7.0.2:
   version "7.0.2"
