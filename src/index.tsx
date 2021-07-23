@@ -1,4 +1,6 @@
-import "./_stdlib";
+import { ShowBool, ShowCond, SwitchKind } from "./utils";
+import { createContext, createMemo, createSignal, JSX, untrack, useContext } from "solid-js";
+import {render} from "solid-js/web";
 
 const query = new URLSearchParams(location.search);
 
@@ -28,7 +30,7 @@ type Metadata = DiceMeta | {
     kind: "back_link",
     viewport: SDK.IRect,
 } | {
-    kind: "unknown",
+    kind: "unsupported",
 };
 
 const page = query.get("page") as LibID | null;
@@ -116,138 +118,144 @@ async function activateSelectedItem(selection: SDK.IWidget[]): Promise<undefined
     return;
 }
 
-function runSidePanel() {
-    const root = el("div").adto(document.body);
-
-    root.appendChild(document.createTextNode("Hi!"));
-
-    const d20btn = el("button").adto(root).atxt("Create D20");
-
-    d20btn.onev("click", async () => {
-        const meta: Metadata = {
-            kind: "random",
-            min: 1,
-            max: 20,
-        };
-        await miro.board.widgets.create({type: 'sticker', text: 'Click to Roll', ...await createCentered(), metadata: {
-            [meta_id]: meta,
-        }});
+function NoSelection(): JSX.Element {
+    return <div>
+        <button onClick={async () => {
+            const meta: Metadata = {
+                kind: "random",
+                min: 1,
+                max: 20,
+            };
+            await miro.board.widgets.create({type: 'sticker', text: 'Click to Roll', ...await createCentered(), metadata: {
+                [meta_id]: meta,
+            }});
         // woah widget.clientVisible
-    });
+        }}>Create D20</button>
+        <button onClick={async () => {
+            const selected_items = await miro.board.selection.get();
+            if(selected_items.length !== 1) return void miro.showErrorNotification("select frame then click");
+            const selected = selected_items[0]!;
+            if(selected.type !== "FRAME") return void miro.showErrorNotification("need frame");
 
-    const fwbtn = el("button").adto(root).atxt("Create link to frame");
-
-    fwbtn.onclick = async () => {
-        const selected_items = await miro.board.selection.get();
-        if(selected_items.length !== 1) return void miro.showErrorNotification("select frame then click");
-        const selected = selected_items[0]!;
-        if(selected.type !== "FRAME") return void miro.showErrorNotification("need frame");
-        
-        const meta: Metadata = {
-            kind: "frame_link",
-            frame_id: selected.id,
-        };
-        await miro.board.widgets.create({type: 'sticker', text: 'Jump', ...await createCentered(), metadata: {
-            [meta_id]: meta,
-        }});
-    };
-
-    el("button").adto(root).atxt("Create thing").onev("click", async () => {
-        //
-        await miro.board.widgets.create({type: "embed", ...await createCentered(), html: "<iframe src=\""+fullLibPath("unsupported")+"\"></iframe>"});
-    });
-
-    {
-        const clickmodeframe = el("div").adto(root);
-        el("button").adto(clickmodeframe).atxt("Press Button").onev("click", () => {
-            localStorage.setItem("cfg-clickmode", "click");
-        });
-        el("button").adto(clickmodeframe).atxt("Instant").onev("click", () => {
-            localStorage.setItem("cfg-clickmode", "instant");
-        });
-    }
-
-    let selection_editor: HTMLElement | null = null;
-
-    const clearSelxnEditor = () => {
-        root.style.display = "";
-        if(selection_editor) selection_editor.remove();
-    };
-    const createSelxnEditor = (widget: SDK.IWidget, meta: Metadata) => {
-        clearSelxnEditor();
-        root.style.display = "none";
-
-        const editor = el("div").adto(document.body);
-        selection_editor = editor;
-        
-        el("button").adto(el("div").adto(editor)).atxt("○ Activate").onev("click", async () => {
-            await activateSelectedItem([widget]);
-        });
-
-        if(meta.kind === "random") {
-            editor.adch(el("h1").atxt("Dice"));
-            const minv = el("input").adto(el("label").atxt("Min: ").adto(el("div").adto(editor)));
-            const maxv = el("input").adto(el("label").atxt("Max: ").adto(el("div").adto(editor)));
-
-            minv.value = "" + meta.min;
-            maxv.value = "" + meta.max;
-
-            const savebtn = el("button").adto(el("div").adto(editor)).atxt("Save");
-            savebtn.onev("click", async () => {
-                meta.min = +minv.value;
-                meta.max = +maxv.value;
-                (widget as SDK.IStickerWidget).text = randomizeDice(meta);
-                didchange();
-                await miro.board.widgets.update(widget);
-            });
-
-            const didchange = () => {
-                const is_unedited = minv.value === "" + meta.min && maxv.value === "" + meta.max;
-                savebtn.disabled = is_unedited;
+            const meta: Metadata = {
+                kind: "frame_link",
+                frame_id: selected.id,
             };
-            anychange([minv, maxv], didchange);
-            didchange();
-        }else if(meta.kind === "frame_link") {
-            editor.adch(el("h1").atxt("Frame Link"));
-            el("button").atxt("TODO pick").adto(el("div").atxt("Link to: ").adto(editor));
-
-            const makesbackbtnlbl = el("label").adto(editor);
-            const checkbox = el("input").attr({type: "checkbox"}).adto(makesbackbtnlbl);
-            makesbackbtnlbl.atxt(" Make back button");
-            checkbox.checked = meta.create_back_button ?? true;
-
-            const savebtn = el("button").adto(el("div").adto(editor)).atxt("Save");
-            savebtn.onev("click", async () => {
-                meta.create_back_button = checkbox.checked;
-                didchange();
-                await miro.board.widgets.update(widget);
+            await miro.board.widgets.create({type: 'sticker', text: 'Jump', ...await createCentered(), metadata: {
+                [meta_id]: meta,
+            }});
+        }}>Create link to frame</button>
+        <button onClick={async () => {
+            await miro.board.widgets.create({
+                type: "embed",
+                ...await createCentered(),
+                html: "<iframe src=\""+fullLibPath("unsupported")+"\"></iframe>",
             });
+        }}>Create thing</button>
+        <div>
+            Click Mode:
+            <button onClick={() => {
+                localStorage.setItem("cfg-clickmode", "click");
+            }}>Click</button>
+            <button onClick={() => {
+                localStorage.setItem("cfg-clickmode", "instant");
+            }}>Instant</button>
+        </div>
+    </div>;
+}
 
-            const didchange = () => {
-                const makesbackbtn_unchanged = checkbox.checked === (meta.create_back_button ?? true);
-                savebtn.disabled = makesbackbtn_unchanged;
-            };
-            anychange([checkbox], didchange);
-            didchange();
-        }else{
-            editor.atxt("TODO edit "+meta.kind);
-        }
-    };
+function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
+    return <div>
+        <button onclick={async () => {
+            await activateSelectedItem([props.selection.widget]);
+        }}>○ Activate</button>
+        <SwitchKind item={props.selection.meta}>{{
+            random: meta => {
+                const [state, setState] = createSignal<DiceMeta>({...meta});
+
+                return <div>
+                    <h1>Dice</h1>
+                    <div><label>Min: <input
+                        onInput={e => setState(d => ({...d, min: +e.currentTarget.value}))}
+                        type="number"
+                        ref={el => el.value = "" + state().min}
+                    /></label></div>
+                    <div><label>Max: <input
+                        onInput={e => setState(d => ({...d, max: +e.currentTarget.value}))}
+                        type="number"
+                        ref={el => el.value = "" + state().max}
+                    /></label></div>
+                    <button
+                        disabled={JSON.stringify(state()) === JSON.stringify(meta)}
+                        onClick={async () => {
+                            Object.assign(meta, state());
+                            (props.selection.widget as SDK.IStickerWidget).text = randomizeDice(meta);
+                            await miro.board.widgets.update(props.selection.widget);
+                            setState({...meta});
+                        }}
+                    >Save</button>
+                </div>;
+            },
+            frame_link: meta => {
+                const [state, setState] = createSignal({...meta});
+
+                return <div>
+                    <h1>Frame Link</h1>
+                    <div>Link to: [TODO]</div>
+                    <div><label><input
+                        onInput={e => setState(d => ({...d, create_back_button: !(d.create_back_button ?? true)}))}
+                        type="checkbox"
+                        checked={state().create_back_button ?? true}
+                    /> Make back button</label></div>
+                    <button
+                        disabled={JSON.stringify(state()) === JSON.stringify(meta)}
+                        onClick={async () => {
+                            Object.assign(meta, state());
+                            await miro.board.widgets.update(props.selection.widget);
+                            setState({...meta});
+                        }}
+                    >Save</button>
+                </div>;
+            },
+            back_link: meta => <div>not editable</div>,
+            unsupported: meta => <div>
+                TODO edit {meta.kind}
+            </div>,
+        }}</SwitchKind>
+    </div>;
+}
+
+type SelectionState = {widget: SDK.IWidget, meta: Metadata};
+function SidePanel(props: {selection: SelectionState | null}): JSX.Element {
+    // <button onClick={() => location.reload()}>Refresh Panel</button>
+    return <div>
+        <ShowCond when={props.selection} fallback={<NoSelection />}>{selxn => (
+            <SelectionEditor selection={selxn} />
+        )}</ShowCond>
+    </div>;
+}
+
+function runSidePanel() {
+
+    const [selection, setSelection] = createSignal<SelectionState | null>(null);
+    const sp = document.createElement("div");
+    document.body.appendChild(sp);
+    render(() => <SidePanel selection={selection()} />, sp);
 
     miro.addListener("SELECTION_UPDATED", async (event) => {
         const data = event.data as {id: string, metadata: {[key: string]: unknown}, type: string}[];
-        if(data.length !== 1) return clearSelxnEditor();
+        if(data.length !== 1) return setSelection(null);
         const selxitm = data[0]!;
         const meta = selxitm.metadata[meta_id] as Metadata | undefined;
-        if(!meta) return clearSelxnEditor();
+        if(!meta) return setSelection(null);
 
         const selection = await miro.board.widgets.get({id: selxitm.id});
-        if(selection.length !== 1) return clearSelxnEditor();
+        if(selection.length !== 1) return setSelection(null);
         const wselxitm = selection[0]!;
 
         const wmeta = wselxitm.metadata[meta_id] as Metadata | undefined;        
-        if(!wmeta) return clearSelxnEditor();
-        createSelxnEditor(wselxitm, wmeta);
+        if(!wmeta) return setSelection(null);
+        setSelection({widget: wselxitm, meta: wmeta});
     });
 }
 function runMainScreen() {
