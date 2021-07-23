@@ -19,24 +19,8 @@ point miro at `https://pfg.pw/mirodnd/app-dev.html` and set permissions boards:r
 
 run `yarn dev` and `http-server dist -c-1 -p 8020 --cors dist/`
 
+use `reloadSandbox()` in miro to reload plugins
+
 production:
 
 point miro at `https://pfg.pw/mirodnd/app.html`
-
-reminder:
-
-```js
-import { defineConfig } from "vite";
-import solidPlugin from "vite-plugin-solid";
-import WindiCSS from "vite-plugin-windicss";
-import {resolve} from "path";
-
-export default defineConfig({
-  plugins: [
-    solidPlugin(),
-    WindiCSS({
-      scan: {
-        fileExtensions: ["html", "js", "ts", "jsx", "tsx"],
-      },
-    }),
-```
