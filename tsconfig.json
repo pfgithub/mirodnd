@@ -16,8 +16,7 @@
             "esnext"
         ],
         "strict": true,
-        "sourceMap": true,
-        "types": []
+        "sourceMap": true
     },
     "include": [
         "src/**/*"

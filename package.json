@@ -4,13 +4,27 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "build": "node esbuild.js && cp src/app.html dist/app.html && cp src/app-dev.html dist/app-dev.html"
+    "build": "rollup -c"
   },
   "devDependencies": {
+    "@babel/core": "^7.14.8",
+    "@babel/preset-env": "^7.14.8",
+    "@babel/preset-typescript": "^7.14.5",
+    "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-commonjs": "^19.0.1",
+    "@rollup/plugin-node-resolve": "^13.0.2",
+    "@types/babel__core": "^7.1.15",
     "@typescript-eslint/eslint-plugin": "^4.27.0",
     "@typescript-eslint/parser": "^4.27.0",
-    "esbuild": "^0.12.9",
+    "babel-preset-solid": "^1.0.4",
     "eslint": "^7.29.0",
+    "rollup": "^2.53.3",
+    "rollup-plugin-copy": "^3.4.0",
+    "rollup-plugin-uglify": "^6.0.4",
+    "rollup-plugin-windicss": "^1.2.5",
     "typescript": "^4.3.4"
+  },
+  "dependencies": {
+    "solid-js": "^1.0.2"
   }
 }
