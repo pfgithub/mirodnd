@@ -13,7 +13,7 @@ const is_prod = process.env.NODE_ENV === "production";
 
 export default defineConfig({
     input: {
-        out: "src/index.ts"
+        out: "src/index.tsx"
     },
     output: {
         dir: "dist/",
