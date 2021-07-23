@@ -4,7 +4,7 @@ import {defineConfig} from "rollup";
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import copy from 'rollup-plugin-copy';
-import {uglify} from 'rollup-plugin-uglify';
+import {terser} from 'rollup-plugin-terser';
 
 const extensions = [
     '.js', '.jsx', '.ts', '.tsx',
@@ -36,6 +36,6 @@ export default defineConfig({
                 { src: "public/*", dest: 'dist/' }
             ]
         }),
-        is_prod && uglify(),
+        is_prod && terser(),
     ],
 });
