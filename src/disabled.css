@@ -1,4 +1,9 @@
 *:disabled {
-    opacity: 0.5;
-    cursor: initial !important;
+  opacity: 0.5;
+  cursor: initial !important;
+}
+
+html {
+  overflow: scroll;
+  max-height: 100vh;
 }

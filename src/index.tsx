@@ -1,4 +1,5 @@
-import { createSignal, JSX } from "solid-js";
+import { createSignal, JSX, Match, Switch, untrack } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import { render } from "solid-js/web";
 import "virtual:windi.css";
 import "./disabled.css";
@@ -179,11 +180,24 @@ function NoSelection(): JSX.Element {
 }
 
 function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
-    return <div>
+    return <ShowCond when={props.selection.meta} fallback={<>
+        <Switch>
+            <Match when={props.selection.widget.type === "LINE"}>{untrack(() => {
+                const widget = () => props.selection.widget as SDK.ILineWidget;
+
+                return <>Length (Excludes curves/bends): {Math.hypot(
+                    widget().startPosition.x - widget().endPosition.x,
+                    widget().startPosition.y - widget().endPosition.y,
+                )}</>;
+            })}</Match>
+        </Switch>
+        <hr />
+        <pre><code>{JSON.stringify(props.selection.widget, null, "  ")}</code></pre>
+    </>}>{any_meta => <>
         <button class="btn" onclick={async () => {
             await activateSelectedItem([props.selection.widget]);
         }}>○ Activate</button>
-        <SwitchKind item={props.selection.meta}>{{
+        <SwitchKind item={any_meta}>{{
             random: meta => {
                 const [state, setState] = createSignal<DiceMeta>({...meta});
 
@@ -237,11 +251,11 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
             unsupported: meta => <div>
                 TODO edit {meta.kind}
             </div>,
-        }}</SwitchKind>
-    </div>;
+        }}</SwitchKind></>}
+    </ShowCond>;
 }
 
-type SelectionState = {widget: SDK.IWidget, meta: Metadata};
+type SelectionState = {widget: SDK.IWidget, meta: Metadata | undefined};
 function SidePanel(props: {selection: SelectionState | null}): JSX.Element {
     // <button class="btn" onClick={() => location.reload()}>Refresh Panel</button>
     return <div>
@@ -252,27 +266,27 @@ function SidePanel(props: {selection: SelectionState | null}): JSX.Element {
 }
 
 function runSidePanel() {
-
-    const [selection, setSelection] = createSignal<SelectionState | null>(null);
+    type StoreTypeValue = {value: SelectionState | null};
+    const [selection, setSelection] = createStore<StoreTypeValue>({value: null});
     const sp = document.createElement("div");
     document.body.appendChild(sp);
-    render(() => <SidePanel selection={selection()} />, sp);
+    render(() => <SidePanel selection={selection.value} />, sp);
 
-    miro.addListener("SELECTION_UPDATED", async (event) => {
-        const data = event.data as {id: string, metadata: {[key: string]: unknown}, type: string}[];
-        if(data.length !== 1) return setSelection(null);
-        const selxitm = data[0]!;
-        const meta = selxitm.metadata[meta_id] as Metadata | undefined;
-        if(!meta) return setSelection(null);
-
-        const selected_item = await miro.board.widgets.get({id: selxitm.id});
-        if(selected_item.length !== 1) return setSelection(null);
+    const onupdate = async (event: SDK.Event) => {
+        const selected_item = await miro.board.selection.get();
+        console.log(selected_item);
+        if(selected_item.length !== 1) return setSelection({value: null});
         const wselxitm = selected_item[0]!;
 
-        const wmeta = wselxitm.metadata[meta_id] as Metadata | undefined;        
-        if(!wmeta) return setSelection(null);
-        setSelection({widget: wselxitm, meta: wmeta});
-    });
+        const wmeta = wselxitm.metadata[meta_id] as Metadata | undefined;
+        if(selection.value && selection.value.widget.id === wselxitm.id) {
+            setSelection(reconcile<StoreTypeValue>({value: {widget: wselxitm, meta: wmeta}}, {merge: true}));
+        }else{
+            setSelection({value: {widget: wselxitm, meta: wmeta}});
+        }
+    };
+    miro.addListener("SELECTION_UPDATED", e => void onupdate(e));
+    miro.addListener("CANVAS_CLICKED", e => void onupdate(e));
 }
 function runMainScreen() {
     document.body.appendChild(document.createTextNode("You should not be seeing this."));
@@ -312,7 +326,7 @@ function runMainScreen() {
             },
         }).catch(e => console.log("plugin init error", e));
 
-        miro.addListener("SELECTION_UPDATED", async (event) => {
+        const onupdate = async (event: SDK.Event) => {
             const data = event.data as {id: string, metadata: {[key: string]: unknown}, type: string}[];
             if(data.length !== 1) return;
             const selxitm = data[0]!;
@@ -326,7 +340,8 @@ function runMainScreen() {
 
             const selection = await miro.board.widgets.get({id: selxitm.id});
             await activateSelectedItem(selection);
-        });
+        };
+        miro.addListener("SELECTION_UPDATED", e => void onupdate(e));
     });
 }
 
