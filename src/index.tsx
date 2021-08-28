@@ -265,9 +265,9 @@ function runSidePanel() {
         const meta = selxitm.metadata[meta_id] as Metadata | undefined;
         if(!meta) return setSelection(null);
 
-        const selection = await miro.board.widgets.get({id: selxitm.id});
-        if(selection.length !== 1) return setSelection(null);
-        const wselxitm = selection[0]!;
+        const selected_item = await miro.board.widgets.get({id: selxitm.id});
+        if(selected_item.length !== 1) return setSelection(null);
+        const wselxitm = selected_item[0]!;
 
         const wmeta = wselxitm.metadata[meta_id] as Metadata | undefined;        
         if(!wmeta) return setSelection(null);
