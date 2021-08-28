@@ -1,11 +1,11 @@
-import { ShowBool, ShowCond, SwitchKind } from "./utils";
-import { createContext, createMemo, createSignal, JSX, untrack, useContext } from "solid-js";
-import {render} from "solid-js/web";
+import { createSignal, JSX } from "solid-js";
+import { render } from "solid-js/web";
 import "virtual:windi.css";
 import "./disabled.css";
+import { ShowCond, SwitchKind } from "./utils";
 
 if(location.pathname.endsWith("-dev.html")) {
-    fetch("http://localhost:8020/bundle.css").then(r => r.text()).then(css => {
+    void fetch("http://localhost:8020/bundle.css").then(r => r.text()).then(css => {
         const style = document.createElement("style");
         style.textContent = css;
         document.head.appendChild(style);
