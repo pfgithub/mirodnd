@@ -184,11 +184,30 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
         <Switch>
             <Match when={props.selection.widget.type === "LINE"}>{untrack(() => {
                 const widget = () => props.selection.widget as SDK.ILineWidget;
-
-                return <>Length (Excludes curves/bends): {Math.hypot(
+                const lengthPx = () => Math.hypot(
                     widget().startPosition.x - widget().endPosition.x,
                     widget().startPosition.y - widget().endPosition.y,
-                )}</>;
+                );
+                const scale = () => 0.00836517049;
+                const miles = () => lengthPx() * scale();
+                const daysPerMile = () => 400;
+                const days = () => miles() * (1 / daysPerMile());
+
+                return <>
+                    <div>Length (Excludes curves/bends): {lengthPx().toLocaleString()}px</div>
+                    <div>
+                        Scale: {scale().toLocaleString()}mi/px
+                    </div>
+                    <div>
+                        Miles: {miles().toLocaleString()}mi
+                    </div>
+                    <div>
+                        Transport Speed: {daysPerMile().toLocaleString()}d/mi
+                    </div>
+                    <div>
+                        Days: {days().toLocaleString()}d
+                    </div>
+                </>;
             })}</Match>
         </Switch>
         <hr />
