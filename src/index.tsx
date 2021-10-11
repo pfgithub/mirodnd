@@ -179,8 +179,13 @@ function NoSelection(): JSX.Element {
     </div>;
 }
 
-function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
-    return <ShowCond when={props.selection.meta} fallback={<>
+function getWidgetMeta(widget: SDK.IWidget): Metadata | undefined {
+    const wmeta = widget.metadata[meta_id] as Metadata | undefined;
+    return wmeta;
+}
+
+function SelectionEditor(props: {selection: SelectionState, editSelection: (n: SelectionState) => void}): JSX.Element {
+    return <ShowCond when={getWidgetMeta(props.selection.widget)} fallback={<>
         <Switch>
             <Match when={props.selection.widget.type === "LINE"}>{untrack(() => {
                 const widget = () => props.selection.widget as SDK.ILineWidget;
@@ -237,10 +242,12 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
                     <button class="btn"
                         disabled={JSON.stringify(state()) === JSON.stringify(meta)}
                         onClick={async () => {
-                            Object.assign(meta, state());
-                            (props.selection.widget as SDK.IStickerWidget).text = randomizeDice(meta);
-                            await miro.board.widgets.update(props.selection.widget);
-                            setState({...meta});
+                            const copy: SDK.IStickerWidget = JSON.parse(JSON.stringify(props.selection.widget));
+                            copy.metadata[meta_id] = state();
+                            copy.text = randomizeDice(state());
+
+                            await miro.board.widgets.update(copy);
+                            props.editSelection({widget: copy});
                         }}
                     >Save</button>
                 </div>;
@@ -259,9 +266,11 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
                     <button class="btn"
                         disabled={JSON.stringify(state()) === JSON.stringify(meta)}
                         onClick={async () => {
-                            Object.assign(meta, state());
-                            await miro.board.widgets.update(props.selection.widget);
-                            setState({...meta});
+                            const copy: SDK.IStickerWidget = JSON.parse(JSON.stringify(props.selection.widget));
+                            copy.metadata[meta_id] = state();
+                            
+                            await miro.board.widgets.update(copy);
+                            props.editSelection({widget: copy});
                         }}
                     >Save</button>
                 </div>;
@@ -274,12 +283,12 @@ function SelectionEditor(props: {selection: SelectionState}): JSX.Element {
     </ShowCond>;
 }
 
-type SelectionState = {widget: SDK.IWidget, meta: Metadata | undefined};
-function SidePanel(props: {selection: SelectionState | null}): JSX.Element {
+type SelectionState = {widget: Readonly<SDK.IWidget>};
+function SidePanel(props: {selection: SelectionState | null, editSelection: (v: SelectionState) => void}): JSX.Element {
     // <button class="btn" onClick={() => location.reload()}>Refresh Panel</button>
     return <div>
         <ShowCond when={props.selection} fallback={<NoSelection />}>{selxn => (
-            <SelectionEditor selection={selxn} />
+            <SelectionEditor selection={selxn} editSelection={props.editSelection} />
         )}</ShowCond>
     </div>;
 }
@@ -289,7 +298,21 @@ function runSidePanel() {
     const [selection, setSelection] = createStore<StoreTypeValue>({value: null});
     const sp = document.createElement("div");
     document.body.appendChild(sp);
-    render(() => <SidePanel selection={selection.value} />, sp);
+
+    const editSelection = (new_selection: SelectionState) => {
+        if(selection.value && selection.value.widget.id === new_selection.widget.id) {
+            setSelection(reconcile<StoreTypeValue>({
+                value: new_selection,
+            }, {merge: true}));
+        }else{
+            setSelection({value: new_selection});
+        }
+    }
+
+    render(() => <SidePanel
+        selection={selection.value}
+        editSelection={editSelection}
+    />, sp);
 
     const onupdate = async (event: SDK.Event) => {
         const selected_item = await miro.board.selection.get();
@@ -297,12 +320,7 @@ function runSidePanel() {
         if(selected_item.length !== 1) return setSelection({value: null});
         const wselxitm = selected_item[0]!;
 
-        const wmeta = wselxitm.metadata[meta_id] as Metadata | undefined;
-        if(selection.value && selection.value.widget.id === wselxitm.id) {
-            setSelection(reconcile<StoreTypeValue>({value: {widget: wselxitm, meta: wmeta}}, {merge: true}));
-        }else{
-            setSelection({value: {widget: wselxitm, meta: wmeta}});
-        }
+        editSelection({widget: wselxitm});
     };
     miro.addListener("SELECTION_UPDATED", e => void onupdate(e));
     miro.addListener("CANVAS_CLICKED", e => void onupdate(e));
